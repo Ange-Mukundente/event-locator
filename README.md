@@ -44,7 +44,7 @@ This is a multi-user event locator application built with Node.js and MongoDB. I
 ## Setup Instructions
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-repo/event-locator.git
+   git clone https://github.com/Ange-Mukundente/event-locator.git
    cd event-locator
    ```
 2. Install dependencies:
