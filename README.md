@@ -75,6 +75,10 @@ This is a multi-user event locator application built with Node.js and MongoDB. I
 - `PUT /api/events/:id` - Update an event
 - `DELETE /api/events/:id` - Delete an event
 
+  ## Testing
+
+This project uses **Jest** for unit testing. The tests are designed to validate core functionalities such as user authentication, event management (CRUD), location-based search, and category filtering.
+
 ## Challenges & Solutions
 - **Geospatial Queries in MongoDB**: Used `2dsphere` index to enable radius-based searches.
 - **Real-time Notifications**: Implemented Redis Pub/Sub for sending event reminders.
