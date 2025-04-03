@@ -1,36 +1,56 @@
-const Event = require('../models/Event');
+const Event = require("../models/Event"); 
 
 /**
- * @desc    Create a new event
+ * @desc    Create a new event with real-time notification
  * @route   POST /api/events
  * @access  Private (Only logged-in users)
  */
 exports.createEvent = async (req, res) => {
-  const { title, description, date, location } = req.body;
-
-  try {
-    // Check if an event with the same title and date already exists
-    const existingEvent = await Event.findOne({ title, date });
-
-    if (existingEvent) {
-      return res.status(400).json({ message: 'Event already exists' });
+    const { title, description, date, location, category } = req.body;
+  
+    // Validate required fields
+    if (!title || !description || !date || !location || !category) {
+        return res.status(400).json({ message: "All fields are required." });
+      }
+    
+      // Ensure title is not null or empty
+      if (!title.trim()) {
+        return res.status(400).json({ message: "Title cannot be empty" });
+      }
+  
+    try {
+      const existingEvent = await Event.findOne({ title, date });
+      if (existingEvent) {
+        return res.status(400).json({ message: "Event already exists" });
+      }
+  
+      // Create the new event with the reference to the logged-in user
+      const newEvent = new Event({
+        title,
+        description,
+        date,
+        location,
+        category,
+        createdBy: req.user._id, // Set the creator of the event (using createdBy)
+      });
+  
+      const savedEvent = await newEvent.save();
+  
+      // Optionally populate the createdBy field to get user data in the response
+      await savedEvent.populate('createdBy');  // Populate the createdBy field
+  
+      // Emit event notification via Socket.io
+      // const io = req.app.get("io");
+      // io.emit("eventCreated", savedEvent);
+  
+      res.status(201).json(savedEvent);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Error creating event", error: error.message });
     }
+  };
+  
 
-    // Create a new event and associate it with the logged-in user
-    const newEvent = new Event({
-      title,
-      description,
-      date,
-      location,
-      user: req.user._id, // Ensures only logged-in users can create events
-    });
-
-    const savedEvent = await newEvent.save();
-    res.status(201).json(savedEvent);
-  } catch (error) {
-    res.status(500).json({ message: 'Error creating event', error: error.message });
-  }
-};
 
 /**
  * @desc    Get all events (Supports filtering by category and location)
@@ -42,17 +62,12 @@ exports.getEvents = async (req, res) => {
     const { category, lat, long } = req.query;
     let query = {};
 
-    // Filter by category if provided
-    if (category) {
-      query.category = category;
-    }
-
-    // Filter by location if latitude and longitude are provided
+    if (category) query.category = category;
     if (lat && long) {
       query.location = {
         $near: {
-          $geometry: { type: 'Point', coordinates: [parseFloat(long), parseFloat(lat)] },
-          $maxDistance: 50000, // Search within 50km radius
+          $geometry: { type: "Point", coordinates: [parseFloat(long), parseFloat(lat)] },
+          $maxDistance: 50000,
         },
       };
     }
@@ -60,12 +75,12 @@ exports.getEvents = async (req, res) => {
     const events = await Event.find(query);
     res.status(200).json(events);
   } catch (error) {
-    res.status(500).json({ message: 'Error retrieving events', error: error.message });
+    res.status(500).json({ message: "Error retrieving events", error: error.message });
   }
 };
 
 /**
- * @desc    Update an event
+ * @desc    Update an event with real-time notification
  * @route   PUT /api/events/:eventId
  * @access  Private (Only event creator)
  */
@@ -74,40 +89,37 @@ exports.updateEvent = async (req, res) => {
   const eventId = req.params.eventId;
 
   try {
-    // Find the event by ID
     const event = await Event.findById(eventId);
+    if (!event) return res.status(404).json({ message: "Event not found" });
 
-    // Check if the event exists
-    if (!event) {
-      return res.status(404).json({ message: 'Event not found' });
+    if (event.createdBy.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Not authorized to update this event" });
     }
 
-    // Ensure that the logged-in user is the creator of the event
-    if (event.user.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: 'Not authorized to update this event' });
-    }
-
-    // Prevent duplicate event updates
     const duplicateEvent = await Event.findOne({ title, date });
     if (duplicateEvent && duplicateEvent._id.toString() !== eventId) {
-      return res.status(400).json({ message: 'Another event with the same title and date already exists' });
+      return res.status(400).json({ message: "Another event with the same title and date already exists" });
     }
 
-    // Update the event details
     event.title = title || event.title;
     event.description = description || event.description;
     event.date = date || event.date;
     event.location = location || event.location;
 
     const updatedEvent = await event.save();
+
+    // Emit update notification via Socket.io
+    // const io = req.app.get("io");
+    // io.emit("eventUpdated", updatedEvent);
+
     res.status(200).json(updatedEvent);
   } catch (error) {
-    res.status(500).json({ message: 'Error updating event', error: error.message });
+    res.status(500).json({ message: "Error updating event", error: error.message });
   }
 };
 
 /**
- * @desc    Delete an event
+ * @desc    Delete an event with real-time notification
  * @route   DELETE /api/events/:eventId
  * @access  Private (Only event creator)
  */
@@ -115,23 +127,21 @@ exports.deleteEvent = async (req, res) => {
   const eventId = req.params.eventId;
 
   try {
-    // Find the event by ID
     const event = await Event.findById(eventId);
+    if (!event) return res.status(404).json({ message: "Event not found" });
 
-    // Check if the event exists
-    if (!event) {
-      return res.status(404).json({ message: 'Event not found' });
+    if (event.createdBy.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Not authorized to delete this event" });
     }
 
-    // Ensure that the logged-in user is the creator of the event
-    if (event.user.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: 'Not authorized to delete this event' });
-    }
-
-    // Delete the event
     await event.deleteOne();
-    res.status(200).json({ message: 'Event deleted successfully' });
+
+    // Emit delete notification via Socket.io
+    // const io = req.app.get("io");
+    // io.emit("eventDeleted", { message: "Event deleted", eventId });
+
+    res.status(200).json({ message: "Event deleted successfully" });
   } catch (error) {
-    res.status(500).json({ message: 'Error deleting event', error: error.message });
+    res.status(500).json({ message: "Error deleting event", error: error.message });
   }
 };

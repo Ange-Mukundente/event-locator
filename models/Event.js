@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const eventSchema = new mongoose.Schema({
-    name: { type: String, required: true, unique: true }, // Prevents duplicate events
+    title: { type: String, required: true, unique: true }, // Prevents duplicate events
     description: { type: String, required: true },
     category: { type: String, required: true },
     date: { type: Date, required: true },
@@ -9,7 +9,7 @@ const eventSchema = new mongoose.Schema({
         type: { type: String, enum: ['Point'], required: true, default: 'Point' },
         coordinates: { type: [Number], required: true } // [longitude, latitude]
     },
-    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false } // Use 'createdBy' instead of 'user'
 });
 
 // Ensure geospatial indexing

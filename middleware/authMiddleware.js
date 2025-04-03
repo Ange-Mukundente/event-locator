@@ -8,6 +8,7 @@ const User = require('../models/User');
  */
 exports.authenticate = async (req, res, next) => {
   const token = req.header('Authorization')?.replace('Bearer ', '');
+  console.log("Token:", token);
 
   if (!token) {
     return res.status(401).json({ message: 'No token, authorization denied' });
@@ -15,9 +16,11 @@ exports.authenticate = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log("Decoded Token:", decoded);
 
-    // Find user in database
-    const user = await User.findById(decoded.userId).select('-password'); // Exclude password
+    // Find user in the database using the `id` from the token (not `userId`)
+    const user = await User.findById(decoded.id).select('-password'); // Use `decoded.id` instead of `decoded.userId`
+    console.log("User:", user);
 
     if (!user) {
       return res.status(401).json({ message: 'User not found' });
