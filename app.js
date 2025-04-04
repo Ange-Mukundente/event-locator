@@ -1,10 +1,17 @@
-const i18next = require("i18next");
-const Backend = require("i18next-fs-backend");
-const middleware = require("i18next-http-middleware");
+// app.js (or i18n-config.js)
+const i18n = require('i18n');
+const path = require('path');
 
-i18next.use(Backend).use(middleware.LanguageDetector).init({
-  fallbackLng: "en",
-  backend: { loadPath: "./locales/{{lng}}.json" },
+i18n.configure({
+  locales: ['en', 'es', 'fr', 'de'], // supported locales
+  directory: __dirname + '/locales', // path to locale files
+  defaultLocale: 'en', // default locale
+  cookie: 'lang', // cookie name to store locale
+  autoReload: true, // reload translations when files change
+  updateFiles: false, // don't create missing locale files automatically
 });
 
-app.use(middleware.handle(i18next));
+// Make i18n available globally (optional but convenient)
+global.__ = i18n.__;
+
+module.exports = i18n; // Export for explicit imports

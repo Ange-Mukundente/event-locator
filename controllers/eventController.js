@@ -1,4 +1,7 @@
-const Event = require("../models/Event"); 
+const Event = require("../models/Event");
+const { sendEmail } = require("../services/notificationService");  // Named import
+const i18n = require("i18n");
+
 
 /**
  * @desc    Create a new event with real-time notification
@@ -6,51 +9,58 @@ const Event = require("../models/Event");
  * @access  Private (Only logged-in users)
  */
 exports.createEvent = async (req, res) => {
-    const { title, description, date, location, category } = req.body;
-  
-    // Validate required fields
-    if (!title || !description || !date || !location || !category) {
-        return res.status(400).json({ message: "All fields are required." });
-      }
-    
-      // Ensure title is not null or empty
-      if (!title.trim()) {
-        return res.status(400).json({ message: "Title cannot be empty" });
-      }
-  
-    try {
-      const existingEvent = await Event.findOne({ title, date });
-      if (existingEvent) {
-        return res.status(400).json({ message: "Event already exists" });
-      }
-  
-      // Create the new event with the reference to the logged-in user
-      const newEvent = new Event({
-        title,
-        description,
-        date,
-        location,
-        category,
-        createdBy: req.user._id, // Set the creator of the event (using createdBy)
-      });
-  
-      const savedEvent = await newEvent.save();
-  
-      // Optionally populate the createdBy field to get user data in the response
-      await savedEvent.populate('createdBy');  // Populate the createdBy field
-  
-      // Emit event notification via Socket.io
-      // const io = req.app.get("io");
-      // io.emit("eventCreated", savedEvent);
-  
-      res.status(201).json(savedEvent);
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: "Error creating event", error: error.message });
-    }
-  };
-  
+  const { title, description, date, location, category } = req.body;
 
+  // Validate required fields
+  if (!title || !description || !date || !location || !category) {
+    return res.status(400).json({ message: "All fields are required." });
+  }
+
+  // Ensure title is not null or empty
+  if (!title.trim()) {
+    return res.status(400).json({ message: "Title cannot be empty" });
+  }
+
+  try {
+    const existingEvent = await Event.findOne({ title, date });
+    if (existingEvent) {
+      return res.status(400).json({ message: "Event already exists" });
+    }
+
+    // Create the new event with the reference to the logged-in user
+    const newEvent = new Event({
+      title,
+      description,
+      date,
+      location,
+      category,
+      createdBy: req.user._id, // Set the creator of the event (using createdBy)
+    });
+
+    const savedEvent = await newEvent.save();
+
+    // Optionally populate the createdBy field to get user data in the response
+    await savedEvent.populate('createdBy');  // Populate the createdBy field
+
+    // Send email notification to the event creator (or other users)
+    const userEmail = req.user.email; // Assuming you have an email in the user object
+    // const emailSubject = `Event Created:${i18n.__('event_created')} ${savedEvent.title}`;
+    const emailSubject = `Event Created: ${i18n.__("event_created")} ${savedEvent.title}`;
+
+    const emailText = `Your event "${savedEvent.title}" has been successfully created. 
+    Details: 
+    - Date: ${savedEvent.date}
+    - Location: ${savedEvent.location}
+    - Category: ${savedEvent.category}
+    `;
+    await sendEmail(userEmail, emailSubject, emailText);  // Send email
+
+    res.status(201).json(savedEvent);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error creating event", error: error.message });
+  }
+};
 
 /**
  * @desc    Get all events (Supports filtering by category and location)
@@ -108,9 +118,16 @@ exports.updateEvent = async (req, res) => {
 
     const updatedEvent = await event.save();
 
-    // Emit update notification via Socket.io
-    // const io = req.app.get("io");
-    // io.emit("eventUpdated", updatedEvent);
+    // Send email notification for event update
+    const userEmail = req.user.email;
+    const emailSubject = `Event Updated: ${updatedEvent.title}`;
+    const emailText = `Your event "${updatedEvent.title}" has been updated. 
+    Details: 
+    - Date: ${updatedEvent.date}
+    - Location: ${updatedEvent.location}
+    - Category: ${updatedEvent.category}
+    `;
+    await sendEmail(userEmail, emailSubject, emailText);  // Send email
 
     res.status(200).json(updatedEvent);
   } catch (error) {
@@ -136,9 +153,12 @@ exports.deleteEvent = async (req, res) => {
 
     await event.deleteOne();
 
-    // Emit delete notification via Socket.io
-    // const io = req.app.get("io");
-    // io.emit("eventDeleted", { message: "Event deleted", eventId });
+    // Send email notification for event deletion
+    const userEmail = req.user.email;
+    const emailSubject = `Event Deleted: ${event.title}`;
+    const emailText = `Your event "${event.title}" has been deleted. 
+    We hope to see you at our future events.`;
+    await sendEmail(userEmail, emailSubject, emailText);  // Send email
 
     res.status(200).json({ message: "Event deleted successfully" });
   } catch (error) {

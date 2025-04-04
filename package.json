@@ -18,12 +18,14 @@
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "express-validator": "^7.2.1",
+    "i18n": "^0.15.1",
     "i18next": "^24.2.3",
     "i18next-fs-backend": "^2.6.0",
     "i18next-http-middleware": "^3.7.1",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.13.0",
     "multer": "^1.4.5-lts.2",
+    "nodemailer": "^6.10.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "passport-local": "^1.0.0",
@@ -37,6 +39,8 @@
   "jest": {
     "testTimeout": 20000,
     "testEnvironment": "node",
-    "setupFiles": ["dotenv/config"]
+    "setupFiles": [
+      "dotenv/config"
+    ]
   }
 }
